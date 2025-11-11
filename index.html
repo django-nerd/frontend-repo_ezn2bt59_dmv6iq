@@ -1,18 +1,160 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Flames App</title>
-    <link rel="icon" type="image/x-icon" href="favicon.svg">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.0.0/dist/fonts/geist-sans/style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.0.0/dist/fonts/geist-mono/style.css">
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Student Management System (Demo)</title>
+  <meta name="description" content="Single-page Student Management System demo with localStorage and a lightweight 3D header scene." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="assets/icon.svg">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div id="three-header" class="hero3d" aria-hidden="true"></div>
+    <div class="header-inner container">
+      <div class="brand">
+        <img src="assets/icon.svg" alt="App Icon" class="brand-icon" />
+        <div>
+          <h1 class="brand-title">Student Management</h1>
+          <p class="brand-subtitle">Demo — localStorage, no backend</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <label class="switch">
+          <input type="checkbox" id="toggle3d" checked />
+          <span class="slider" aria-hidden="true"></span>
+          <span class="switch-label">3D</span>
+        </label>
+        <button id="exportCsvBtn" class="btn ghost" aria-label="Export as CSV">Export CSV</button>
+        <button id="resetDemoBtn" class="btn danger" aria-label="Reset demo data">Reset</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="toolbar" aria-label="Student controls">
+      <div class="search-group">
+        <label for="search" class="visually-hidden">Search students</label>
+        <input id="search" type="search" placeholder="Search by name, id, class, email" aria-label="Search students" />
+      </div>
+      <div class="filters">
+        <label>
+          <span class="lbl">Class</span>
+          <select id="filterClass" aria-label="Filter by class">
+            <option value="">All</option>
+          </select>
+        </label>
+        <label>
+          <span class="lbl">Status</span>
+          <select id="filterStatus" aria-label="Filter by status">
+            <option value="">All</option>
+            <option value="active">Active</option>
+            <option value="alumni">Alumni</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </label>
+        <label>
+          <span class="lbl">Sort</span>
+          <select id="sortBy" aria-label="Sort students">
+            <option value="name">Name</option>
+            <option value="id">ID</option>
+            <option value="class">Class</option>
+            <option value="email">Email</option>
+            <option value="status">Status</option>
+          </select>
+        </label>
+        <button id="addStudentBtn" class="btn primary" aria-haspopup="dialog">Add student</button>
+      </div>
+    </section>
+
+    <section id="listSection" class="cards" aria-live="polite" aria-busy="false">
+      <div id="emptyState" class="empty hidden">
+        <img src="assets/empty.svg" alt="No students" />
+        <p>No students yet. Add your first student to get started.</p>
+        <button id="addStudentBtnEmpty" class="btn primary">Add student</button>
+      </div>
+      <div id="loadingState" class="loading hidden" role="status" aria-live="polite">
+        <span class="spinner"></span>
+        <span>Loading…</span>
+      </div>
+      <div id="studentGrid" class="grid" role="list"></div>
+    </section>
+
+    <aside id="profilePanel" class="profile" aria-hidden="true" aria-labelledby="profileTitle">
+      <div class="profile-header">
+        <button id="closeProfile" class="icon-btn" aria-label="Close profile">✕</button>
+        <h2 id="profileTitle">Student Profile</h2>
+      </div>
+      <div class="profile-body">
+        <div class="profile-main">
+          <img id="profileAvatar" class="avatar-lg" alt="Student avatar" />
+          <div>
+            <h3 id="profileName" class="title"></h3>
+            <p class="muted"><span id="profileId"></span> • <span id="profileClass"></span></p>
+            <p><a id="profileEmail" href="#" target="_blank" rel="noopener noreferrer"></a></p>
+            <span id="profileStatus" class="badge"></span>
+          </div>
+        </div>
+        <div class="profile-history">
+          <h4>Activity</h4>
+          <ul id="profileHistory" class="timeline" aria-live="polite"></ul>
+        </div>
+      </div>
+    </aside>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  </main>
+
+  <dialog id="studentDialog" class="modal" aria-modal="true" aria-labelledby="dialogTitle">
+    <form id="studentForm" method="dialog">
+      <header class="modal-header">
+        <h3 id="dialogTitle">Add student</h3>
+        <button type="button" id="closeDialogBtn" class="icon-btn" aria-label="Close">✕</button>
+      </header>
+      <div class="modal-body">
+        <input type="hidden" id="studentIdHidden" />
+        <div class="form-grid">
+          <label>Full name
+            <input id="nameInput" name="name" autocomplete="name" required />
+          </label>
+          <label>Student ID
+            <input id="idInput" name="sid" required pattern="[A-Za-z0-9_-]{3,}" />
+          </label>
+          <label>Class
+            <input id="classInput" name="class" required />
+          </label>
+          <label>Email
+            <input id="emailInput" name="email" type="email" autocomplete="email" required />
+          </label>
+          <label>Status
+            <select id="statusInput" name="status" required>
+              <option value="active">Active</option>
+              <option value="alumni">Alumni</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </label>
+          <label>Avatar
+            <input id="avatarInput" name="avatar" type="file" accept="image/*" />
+          </label>
+        </div>
+      </div>
+      <footer class="modal-footer">
+        <button type="button" class="btn ghost" id="deleteStudentBtn" hidden>Delete</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn" id="cancelBtn">Cancel</button>
+        <button type="submit" class="btn primary" id="saveBtn">Save</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <noscript>
+    <div class="noscript container">This demo requires JavaScript enabled.</div>
+  </noscript>
+
+  <script type="module" src="three-bg.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
 </html>
